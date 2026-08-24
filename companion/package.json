@@ -5,8 +5,11 @@
   "main": "companion.js",
   "bin": "companion.js",
   "scripts": {
-   	"start": "node companion.js",
-  	"build": "pkg companion.js --targets node18-win-x64 --output companion.exe"
+    "start": "node companion.js",
+    "prebuild": "node -e \"require('fs').mkdirSync('out',{recursive:true})\"",
+    "build": "pkg companion.js --targets node18-win-x64 --output out/companion.exe && npm run verify:build && npm run stage:release",
+    "verify:build": "node scripts/verify-build.js",
+    "stage:release": "node scripts/stage-release.js"
   },
   "keywords": [],
   "author": "",
@@ -14,5 +17,8 @@
   "dependencies": {
     "buttplug": "^3.2.2",
     "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "pkg": "^5.8.1"
   }
 }
