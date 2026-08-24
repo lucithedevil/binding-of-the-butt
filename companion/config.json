@@ -1,19 +1,20 @@
 {
   "INTENSITY_BASE": 0.0,
-  "DECAY_RATE": 0.003,
+  "EVENT_DECAY_SECONDS": 6,
+  "PLAYER_HURT_REENTRY_JOLT": 0.2,
   "EVENT_BOOSTS": {
-    "PLAYER_HURT": 0.2,
+    "PLAYER_HURT": 5,
     "BOSS_DEATH": 0.4,
     "SPECIAL_ENEMY_DEATH": 0.03,
-    "ENEMY_DEATH": 0.05,
+    "ENEMY_DEATH": 0.03,
     "ITEM_QUALITY": 0.15,
     "GAME_START": 0.07
   },
 
   "HEART_LOW": {
     "type": "loop",
-    "intensity": 0.15,
-    "duration": 0.6,
-    "interval": 1.2
+    "intensity": 0.75,
+    "duration": 1.0,
+    "interval": 8.0
   }
 }
