@@ -1,4 +1,4 @@
--- Binding of the Butt - Mod principal avec gestion d'erreurs robuste
+-- Binding of the Butt - Main mod with robust error handling
 local ButtMod = RegisterMod("Binding of the Butt", 1)
 local socket = require("socket")
 local json = require("json")
@@ -7,15 +7,15 @@ local HOST, PORT = "127.0.0.1", 58711
 local client = nil
 local connected = false
 local reconnectTimer = 0
-local RECONNECT_DELAY = 300 -- 10 secondes à 30 FPS
+local RECONNECT_DELAY = 300 -- 10 seconds at 30 FPS
 local gameStartTimer = 0
 local gameStartSent = false
 
 print("[ButtMod] ============================================")
-print("[ButtMod] BINDING OF THE BUTT - DÉMARRAGE")
+print("[ButtMod] BINDING OF THE BUTT - STARTUP")
 print("[ButtMod] ============================================")
 
--- Fonction de connexion sécurisée
+-- Safe connection function
 local function Connect()
     local success, err = pcall(function()
         if client then
@@ -23,42 +23,42 @@ local function Connect()
             client = nil
         end
         
-        print("[ButtMod] Tentative de connexion au companion...")
+        print("[ButtMod] Attempting to connect to companion...")
         client = socket.tcp()
         
         if not client then
-            error("Impossible de créer le socket TCP")
+            error("Unable to create TCP socket")
         end
         
-        client:settimeout(0.1) -- Non-bloquant
+        client:settimeout(0.1) -- Non-blocking
         local ok, connectErr = client:connect(HOST, PORT)
         
         if not ok then
             if connectErr ~= "timeout" then
-                error("Connexion échouée: " .. tostring(connectErr))
+                error("Connection failed: " .. tostring(connectErr))
             end
             client:close()
             client = nil
             return false
         end
         
-        print("[ButtMod] ✅ Connecté au companion !")
+        print("[ButtMod] ✅ Connected to companion!")
         
-        -- Envoi du message HELLO
+        -- Send HELLO message
         local helloMsg = json.encode({type = "HELLO", source = "isaac"}) .. "\n"
         local sendOk, sendErr = client:send(helloMsg)
         
         if not sendOk then
-            error("Erreur envoi HELLO: " .. tostring(sendErr))
+            error("HELLO send error: " .. tostring(sendErr))
         end
         
-        print("[ButtMod] Message HELLO envoyé")
+        print("[ButtMod] HELLO message sent")
         connected = true
         return true
     end)
     
     if not success then
-        print("[ButtMod] ❌ Erreur de connexion: " .. tostring(err))
+        print("[ButtMod] ❌ Connection error: " .. tostring(err))
         connected = false
         if client then
             pcall(function() client:close() end)
@@ -70,7 +70,7 @@ local function Connect()
     return success
 end
 
--- Fonction d'envoi sécurisée
+-- Safe send function
 local function SafeSend(message)
     if not connected or not client then
         return false
@@ -80,12 +80,12 @@ local function SafeSend(message)
         local jsonMsg = json.encode(message) .. "\n"
         local ok, sendErr = client:send(jsonMsg)
         if not ok then
-            error("Erreur d'envoi: " .. tostring(sendErr))
+            error("Send error: " .. tostring(sendErr))
         end
     end)
     
     if not success then
-        print("[ButtMod] ❌ Erreur envoi message: " .. tostring(err))
+        print("[ButtMod] ❌ Message send error: " .. tostring(err))
         connected = false
         return false
     end
@@ -93,39 +93,39 @@ local function SafeSend(message)
     return true
 end
 
--- Fonction de reset sécurisée
+-- Safe reset function
 local function SendReset()
     local success, err = pcall(function()
         if connected and client then
             SafeSend({type = "STOP"})
-            print("[ButtMod] Signal STOP envoyé")
+            print("[ButtMod] STOP signal sent")
         end
     end)
     
     if not success then
-        print("[ButtMod] ❌ Erreur SendReset: " .. tostring(err))
+        print("[ButtMod] ❌ SendReset error: " .. tostring(err))
     end
 end
 
--- Callback: Démarrage du jeu
+-- Callback: Game start
 function ButtMod:OnGameStart(isContinued)
     local success, err = pcall(function()
-        print("[ButtMod] Jeu démarré (continued: " .. tostring(isContinued) .. ")")
+        print("[ButtMod] Game started (continued: " .. tostring(isContinued) .. ")")
         Connect()
-        gameStartTimer = 30 -- 1 seconde de délai
+        gameStartTimer = 30 -- 1 second delay
         gameStartSent = false
     end)
     
     if not success then
-        print("[ButtMod] ❌ Erreur OnGameStart: " .. tostring(err))
+        print("[ButtMod] ❌ OnGameStart error: " .. tostring(err))
     end
 end
 ButtMod:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, ButtMod.OnGameStart)
 
--- Callback: Mise à jour (gestion reconnexion + santé faible)
+-- Callback: Update (reconnection handling + low health)
 function ButtMod:OnUpdate()
     local success, err = pcall(function()
-        -- Gestion de la reconnexion
+        -- Reconnection handling
         if not connected then
             reconnectTimer = reconnectTimer + 1
             if reconnectTimer >= RECONNECT_DELAY then
@@ -135,7 +135,7 @@ function ButtMod:OnUpdate()
             return
         end
         
-        -- Gestion de l'envoi de GAME_START après connexion
+        -- Handle GAME_START send after connection
         if gameStartTimer > 0 and not gameStartSent then
             gameStartTimer = gameStartTimer - 1
             if gameStartTimer <= 0 and connected and client then
@@ -143,30 +143,30 @@ function ButtMod:OnUpdate()
                     type = "GAME_START",
                     continued = false
                 })
-                print("[ButtMod] Événement GAME_START envoyé")
+                print("[ButtMod] GAME_START event sent")
                 gameStartSent = true
             end
         end
         
-        -- Vérification santé faible
+        -- Low health check
         local player = Isaac.GetPlayer(0)
         if not player then
             return
         end
         
         local hearts = player:GetHearts() + player:GetSoulHearts()
-        if hearts <= 2 then -- 1 cœur ou moins
+        if hearts <= 2 then -- 1 heart or less
             SafeSend({type = "HEART_LOW", hearts = hearts})
         end
     end)
     
     if not success then
-        print("[ButtMod] ❌ Erreur OnUpdate: " .. tostring(err))
+        print("[ButtMod] ❌ OnUpdate error: " .. tostring(err))
     end
 end
 ButtMod:AddCallback(ModCallbacks.MC_POST_UPDATE, ButtMod.OnUpdate)
 
--- Callback: Collectible ramassé
+-- Callback: Collectible picked up
 function ButtMod:OnCollectibleInit(pickup)
     local success, err = pcall(function()
         if not pickup then
@@ -183,23 +183,23 @@ function ButtMod:OnCollectibleInit(pickup)
             return
         end
         
-        if cfg.Quality >= 3 then -- Qualité 3 ou 4
+        if cfg.Quality >= 3 then -- Quality 3 or 4
             SafeSend({
                 type = "ITEM_QUALITY",
                 quality = cfg.Quality,
                 name = cfg.Name or "Unknown"
             })
-            print("[ButtMod] Item qualité " .. cfg.Quality .. " détecté: " .. (cfg.Name or "Unknown"))
+            print("[ButtMod] Quality " .. cfg.Quality .. " item detected: " .. (cfg.Name or "Unknown"))
         end
     end)
     
     if not success then
-        print("[ButtMod] ❌ Erreur OnCollectibleInit: " .. tostring(err))
+        print("[ButtMod] ❌ OnCollectibleInit error: " .. tostring(err))
     end
 end
 ButtMod:AddCallback(ModCallbacks.MC_POST_PICKUP_INIT, ButtMod.OnCollectibleInit, PickupVariant.PICKUP_COLLECTIBLE)
 
--- Callback: Joueur blessé
+-- Callback: Player hurt
 function ButtMod:OnPlayerHurt(ent, amount, flags, source, countdown)
     local success, err = pcall(function()
         if not ent or not connected or not client then
@@ -211,31 +211,31 @@ function ButtMod:OnPlayerHurt(ent, amount, flags, source, countdown)
             damage = amount or 1,
             source = source and source.Type or "unknown"
         })
-        print("[ButtMod] Joueur blessé - dégâts: " .. (amount or 1))
+        print("[ButtMod] Player hurt - damage: " .. (amount or 1))
     end)
     
     if not success then
-        print("[ButtMod] ❌ Erreur OnPlayerHurt: " .. tostring(err))
+        print("[ButtMod] ❌ OnPlayerHurt error: " .. tostring(err))
     end
 end
 ButtMod:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG, ButtMod.OnPlayerHurt, EntityType.ENTITY_PLAYER)
 
--- Callback: Mort d'un NPC (boss ou ennemi)
+-- Callback: NPC death (boss or enemy)
 function ButtMod:OnNPCDeath(npc)
     local success, err = pcall(function()
         if not npc or not connected or not client then
             return
         end
         
-        -- Vérifier si c'est un boss
+        -- Check whether it is a boss
         if npc:IsBoss() then
             SafeSend({
                 type = "BOSS_DEATH",
                 boss = npc.Type or "unknown"
             })
-            print("[ButtMod] Boss vaincu: " .. (npc.Type or "unknown"))
+            print("[ButtMod] Boss defeated: " .. (npc.Type or "unknown"))
         else
-            -- Ennemis spéciaux (plus gros boost)
+            -- Special enemies (larger boost)
             if npc.Type == EntityType.ENTITY_MONSTRO or 
                npc.Type == EntityType.ENTITY_LARRY_JR or
                npc.Type == EntityType.ENTITY_CHUB then
@@ -243,27 +243,27 @@ function ButtMod:OnNPCDeath(npc)
                     type = "SPECIAL_ENEMY_DEATH",
                     enemy = npc.Type
                 })
-                print("[ButtMod] Ennemi spécial vaincu: " .. npc.Type)
+                print("[ButtMod] Special enemy defeated: " .. npc.Type)
             else
-                -- Ennemi normal (petit boost)
+                -- Normal enemy (small boost)
                 SafeSend({
                     type = "ENEMY_DEATH",
                     enemy = npc.Type or "unknown"
                 })
-                -- Pas de log pour éviter le spam
+                -- No log to avoid spam
             end
         end
     end)
     
     if not success then
-        print("[ButtMod] ❌ Erreur OnNPCDeath: " .. tostring(err))
+        print("[ButtMod] ❌ OnNPCDeath error: " .. tostring(err))
     end
 end
 ButtMod:AddCallback(ModCallbacks.MC_POST_NPC_DEATH, ButtMod.OnNPCDeath)
 
--- Callback: Sortie du jeu
+-- Callback: Game exit
 function ButtMod:OnExit()
-    print("[ButtMod] Sortie du jeu - nettoyage...")
+    print("[ButtMod] Game exit - cleanup...")
     SendReset()
     if client then
         pcall(function() client:close() end)
@@ -273,8 +273,8 @@ function ButtMod:OnExit()
 end
 ButtMod:AddCallback(ModCallbacks.MC_PRE_GAME_EXIT, ButtMod.OnExit)
 
-print("[ButtMod] Mod initialisé - en attente de connexion au companion")
-print("[ButtMod] Assurez-vous que companion.js est démarré !")
+print("[ButtMod] Mod initialized - waiting for companion connection")
+print("[ButtMod] Make sure companion.js is running!")
 
--- Tentative de connexion initiale
+-- Initial connection attempt
 Connect()
